@@ -12,6 +12,8 @@ log = get_logger("opencode_telegram.app.services.session_sync")
 
 
 class SessionSyncService:
+    _last_seen: dict[str, int] = {}
+
     def __init__(
         self,
         binding_repo: SessionBindingRepository,
@@ -25,8 +27,13 @@ class SessionSyncService:
         self._runtime = runtime
         self._telegram = telegram
         self._interval = interval
-        self._last_seen: dict[str, int] = {}
         self._running = False
+
+    @classmethod
+    def mark_synced(cls, runtime_session_id: str, timestamp: float) -> None:
+        current = cls._last_seen.get(runtime_session_id, 0)
+        if timestamp > current:
+            cls._last_seen[runtime_session_id] = timestamp
 
     async def start(self) -> None:
         self._running = True

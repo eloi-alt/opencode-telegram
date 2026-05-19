@@ -112,6 +112,7 @@ class Container:
             default_workspace=self.config.OPENCODE_DEFAULT_WORKSPACE,
             default_server=self.config.OPENCODE_DEFAULT_SERVER,
             capabilities=cap,
+            max_message_length=self.config.MESSAGE_MAX_LENGTH,
         )
 
         log.info("container_initialized")

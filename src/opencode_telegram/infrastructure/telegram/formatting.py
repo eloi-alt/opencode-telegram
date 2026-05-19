@@ -86,6 +86,7 @@ def render_help_text(has_admin: bool) -> str:
         "Commands:",
         "  /status — show session status",
         "  /new <name> — create a new session with an optional name",
+        "  /sync — fetch session history from OpenCode",
         "  /sessions — list active sessions",
         "  /resume — pick a session to resume",
         "  /clear — clear current session context",

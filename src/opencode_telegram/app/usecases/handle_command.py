@@ -33,6 +33,7 @@ from opencode_telegram.infrastructure.security import SecurityService
 from opencode_telegram.infrastructure.telegram.formatting import (
     render_help_text,
     render_status_card,
+    split_long_message,
 )
 from opencode_telegram.shared.errors import CommandNotAllowedError, SessionNotFoundError
 
@@ -56,6 +57,7 @@ class HandleCommandUseCase:
         default_workspace: str,
         default_server: str,
         capabilities: RuntimeCapabilities,
+        max_message_length: int = 4096,
     ) -> None:
         self._user_repo = user_repo
         self._chat_repo = chat_repo
@@ -69,6 +71,7 @@ class HandleCommandUseCase:
         self._default_workspace = default_workspace
         self._default_server = default_server
         self._capabilities = capabilities
+        self._max_msg_length = max_message_length
 
     def has_pending_name(self, chat_id: ChatId) -> bool:
         return self._pending_new_names.get(chat_id.value, False)
@@ -126,6 +129,7 @@ class HandleCommandUseCase:
             CommandName.sessions: self._handle_sessions,
             CommandName.resume: self._handle_resume,
             CommandName.new: self._handle_new,
+            CommandName.sync: self._handle_sync,
             CommandName.clear: self._handle_clear,
             CommandName.stop: self._handle_stop,
             CommandName.bind: self._handle_bind,
@@ -275,6 +279,36 @@ class HandleCommandUseCase:
                 chat_id.value,
                 "What name for the new session?",
             )
+
+    async def _handle_sync(self, chat_id: ChatId, user_id: UserId, args: list[str]) -> None:
+        binding = await self._binding_repo.get_active(chat_id)
+        if binding is None:
+            await self._telegram.send_message(
+                chat_id.value, "No active session. Send a message first."
+            )
+            return
+        session = await self._session_repo.get(binding.session_id)
+        if not session or not session.runtime_session_id:
+            await self._telegram.send_message(
+                chat_id.value, "No runtime session yet. Send a message to this session first."
+            )
+            return
+        await self._telegram.send_message(chat_id.value, "📡 Fetching session history...")
+        history = await self._runtime.get_session_history(session.runtime_session_id)
+        if not history:
+            await self._telegram.send_message(
+                chat_id.value, "No history found in OpenCode for this session."
+            )
+            return
+        lines: list[str] = [f"<b>Session History: {session.name or session.id.value[:12]}</b>\n"]
+        for entry in history[-30:]:
+            icon = "👤" if entry.role == "user" else "🤖"
+            text = entry.text[:200]
+            lines.append(f"{icon} {text}")
+        text = "\n\n".join(lines)
+        parts = split_long_message(text, self._max_msg_length)
+        for part in parts:
+            await self._telegram.send_message(chat_id.value, part, parse_mode="HTML")
 
     async def _handle_clear(self, chat_id: ChatId, user_id: UserId, args: list[str]) -> None:
         binding = await self._binding_repo.get_active(chat_id)

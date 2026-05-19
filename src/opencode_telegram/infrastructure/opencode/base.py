@@ -2,9 +2,17 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
+from dataclasses import dataclass
 
 from opencode_telegram.domain.entities import Session
 from opencode_telegram.domain.value_objects import HealthStatus, RuntimeCapabilities, SessionId
+
+
+@dataclass
+class HistoryEntry:
+    role: str  # "user" | "assistant"
+    text: str
+    timestamp: float
 
 
 class OpenCodeRuntime(ABC):
@@ -31,6 +39,15 @@ class OpenCodeRuntime(ABC):
         self, session_id: str | SessionId, prompt: str, session_name: str | None = None
     ) -> AsyncIterator[str]:
         ...
+
+    def get_runtime_session_id(self) -> str | None:
+        return None
+
+    def get_opencode_db_path(self) -> str | None:
+        return None
+
+    async def get_session_history(self, runtime_session_id: str) -> list[HistoryEntry]:
+        return []
 
     @abstractmethod
     async def stop_session(self, session_id: str | SessionId) -> None:

@@ -120,6 +120,11 @@ class HandleMessageUseCase:
             if not full_response:
                 full_response = "[No response]"
 
+            rid = self._runtime.get_runtime_session_id()
+            if rid and session.runtime_session_id != rid:
+                session.runtime_session_id = rid
+                await self._session_repo.save(session)
+
             await self._message_repo.update_status(msg.id, MessageStatus.response_complete)
             await self._session_repo.update_status(session.id, SessionStatus.ready)
 

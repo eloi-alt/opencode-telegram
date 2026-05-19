@@ -61,6 +61,7 @@ def _run_polling(config: AppConfig) -> None:
             {"command": "stop", "description": "Interrupt execution"},
             {"command": "health", "description": "Detailed diagnostics"},
             {"command": "logs", "description": "Recent events"},
+            {"command": "sync", "description": "Fetch session history from OpenCode"},
             {"command": "help", "description": "Show this help"},
         ]
         await container.telegram.set_commands(bot_commands)

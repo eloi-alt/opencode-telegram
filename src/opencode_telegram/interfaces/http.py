@@ -36,6 +36,7 @@ def create_app(config: AppConfig | None = None, container: Container | None = No
                 {"command": "stop", "description": "Interrupt execution"},
                 {"command": "health", "description": "Detailed diagnostics"},
                 {"command": "logs", "description": "Recent events"},
+                {"command": "sync", "description": "Fetch session history from OpenCode"},
                 {"command": "help", "description": "Show this help"},
             ]
             await container.telegram.set_commands(bot_commands)

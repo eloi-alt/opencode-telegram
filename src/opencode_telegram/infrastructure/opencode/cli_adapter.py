@@ -7,6 +7,9 @@ from collections.abc import AsyncIterator
 from datetime import datetime
 from pathlib import Path
 
+import sqlite3
+from pathlib import Path
+
 from opencode_telegram.domain.entities import Session
 from opencode_telegram.domain.value_objects import (
     HealthStatus,
@@ -15,7 +18,7 @@ from opencode_telegram.domain.value_objects import (
     SessionStatus,
 )
 from opencode_telegram.infrastructure.logging import get_logger
-from opencode_telegram.infrastructure.opencode.base import OpenCodeRuntime
+from opencode_telegram.infrastructure.opencode.base import HistoryEntry, OpenCodeRuntime
 from opencode_telegram.shared.errors import RuntimeUnavailableError
 
 log = get_logger("opencode_telegram.infrastructure.opencode.cli")
@@ -124,6 +127,40 @@ class OpenCodeCliAdapter(OpenCodeRuntime):
 
         result = "\n".join(texts).strip()
         return result if result else "(no response)"
+
+    def get_runtime_session_id(self) -> str | None:
+        return self._session_id if self._session_id and self._session_id.startswith("ses_") else None
+
+    async def get_session_history(self, runtime_session_id: str) -> list[HistoryEntry]:
+        db_path = Path.home() / ".local" / "share" / "opencode" / "opencode.db"
+        if not db_path.exists():
+            return []
+        try:
+            conn = sqlite3.connect(str(db_path))
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                """SELECT p.data, m.data as msg_data
+                   FROM part p
+                   JOIN message m ON p.message_id = m.id
+                   WHERE p.session_id = ? AND p.data LIKE '%"text"%'
+                   ORDER BY p.time_created ASC""",
+                (runtime_session_id,),
+            ).fetchall()
+            conn.close()
+            entries: list[HistoryEntry] = []
+            for row in rows:
+                pdata = json.loads(row["data"])
+                mdata = json.loads(row["msg_data"])
+                if pdata.get("type") == "text":
+                    text = pdata.get("text", "")
+                    role = mdata.get("role", "assistant")
+                    ts = mdata.get("time", {}).get("created", 0) / 1000
+                    if text:
+                        entries.append(HistoryEntry(role=role, text=text, timestamp=ts))
+            return entries
+        except Exception as e:
+            log.warning("session_history_query_failed", error=str(e))
+            return []
 
     async def create_session(
         self, workspace: str | None = None, project: str | None = None

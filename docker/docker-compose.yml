@@ -1,0 +1,24 @@
+version: "3.8"
+
+services:
+  opencode-telegram:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: opencode-telegram
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - ../.env
+    volumes:
+      - opencode-data:/data
+      - opencode-workspaces:/home/opencode/workspaces
+    environment:
+      - STORAGE_PATH=/data
+      - DATABASE_URL=sqlite+aiosqlite:////data/opencode-telegram.db
+      - OPENCODE_WORKSPACE_ROOT=/home/opencode/workspaces
+
+volumes:
+  opencode-data:
+  opencode-workspaces:

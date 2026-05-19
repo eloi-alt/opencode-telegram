@@ -1,117 +1,93 @@
-# claudecode-telegram
+# OpenCode Telegram Bridge
 
-![demo](demo.gif)
+Self-hosted Telegram bridge for [OpenCode](https://github.com/anomalyco/opencode). Send prompts from Telegram, get responses back — with persistent sessions per chat, full state tracking, and clean runtime abstraction.
 
-Telegram bot bridge for Claude Code. Send messages from Telegram, get responses back.
+## Architecture
 
-## How it works
-
-```mermaid
-flowchart LR
-    A[Telegram] --> B[Cloudflare Tunnel]
-    B --> C[Bridge Server]
-    C -->|tmux send-keys| D[Claude Code]
-    D -->|Stop Hook| E[Read Transcript]
-    E -->|Send Response| A
+```
+Telegram ──► Webhook ──► FastAPI ──► UseCase ──► OpenCodeRuntime
+                 ▲                        │          ├── API Adapter
+                 │                        │          ├── CLI Adapter
+                 │                        ▼          └── Fake Adapter (dev)
+                 └── TelegramClient ◄── Response
 ```
 
-1. Bridge receives Telegram webhooks, injects messages into Claude Code via tmux
-2. Claude Code's Stop hook reads the transcript and sends response back to Telegram
-3. Only responds to Telegram-initiated messages (uses pending file as flag)
-
-## Install
+## Quick Start
 
 ```bash
-# Prerequisites
-brew install tmux cloudflared
+# Install
+pip install opencode-telegram
 
-# Clone
-git clone https://github.com/hanxiao/claudecode-telegram
-cd claudecode-telegram
+# Set your bot token
+export TELEGRAM_BOT_TOKEN="your_token_from_botfather"
 
-# Setup Python env
-uv venv && source .venv/bin/activate
-uv pip install -e .
+# Run
+opencode-telegram
 ```
 
-## Setup
+## Configuration
 
-### 1. Create Telegram bot
-
-Bot receives your messages and sends Claude's responses back.
-
-```bash
-# Message @BotFather on Telegram, create bot, get token
-```
-
-### 2. Configure Stop hook
-
-Hook triggers when Claude finishes responding, reads transcript, sends to Telegram.
-
-```bash
-cp hooks/send-to-telegram.sh ~/.claude/hooks/
-nano ~/.claude/hooks/send-to-telegram.sh  # set your bot token
-chmod +x ~/.claude/hooks/send-to-telegram.sh
-```
-
-Add to `~/.claude/settings.json`:
-```json
-{
-  "hooks": {
-    "Stop": [{"hooks": [{"type": "command", "command": "~/.claude/hooks/send-to-telegram.sh"}]}]
-  }
-}
-```
-
-### 3. Start tmux + Claude
-
-tmux keeps Claude Code running persistently; bridge injects messages via `send-keys`.
-
-```bash
-tmux new -s claude
-claude --dangerously-skip-permissions
-```
-
-### 4. Run bridge
-
-Bridge receives Telegram webhooks and injects messages into Claude Code.
-
-```bash
-export TELEGRAM_BOT_TOKEN="your_token"
-python bridge.py
-```
-
-### 5. Expose via Cloudflare Tunnel
-
-Tunnel exposes local bridge to the internet so Telegram can reach it.
-
-```bash
-cloudflared tunnel --url http://localhost:8080
-```
-
-### 6. Set webhook
-
-Tells Telegram where to send message updates.
-
-```bash
-curl "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook?url=https://YOUR-TUNNEL-URL.trycloudflare.com"
-```
-
-## Bot Commands
-
-| Command | Description |
-|---------|-------------|
-| `/status` | Check tmux session |
-| `/clear` | Clear conversation |
-| `/resume` | Pick session to resume (inline keyboard) |
-| `/continue_` | Auto-continue most recent |
-| `/loop <prompt>` | Start Ralph Loop (5 iterations) |
-| `/stop` | Interrupt Claude |
-
-## Environment Variables
+Copy `.env.example` to `.env` and configure:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `TELEGRAM_BOT_TOKEN` | required | Bot token from BotFather |
-| `TMUX_SESSION` | `claude` | tmux session name |
-| `PORT` | `8080` | Bridge port |
+| `OPENCODE_MODE` | `cli` | `api` or `cli` |
+| `OPENCODE_CLI_PATH` | `opencode` | Path to opencode binary |
+| `OPENCODE_BASE_URL` | — | API base URL (API mode) |
+| `OPENCODE_API_KEY` | — | API key (API mode) |
+| `TELEGRAM_ALLOWED_USERS` | — | Comma-separated user IDs |
+| `TELEGRAM_ALLOWED_CHATS` | — | Comma-separated chat IDs |
+| `PORT` | `8080` | HTTP server port |
+| `DATABASE_URL` | `sqlite+aiosqlite:///data/opencode-telegram.db` | Persistence |
+| `SESSION_TIMEOUT_SEC` | `1800` | Stale session timeout |
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `/start` | Show system status |
+| `/status` | Current session state |
+| `/sessions` | List active sessions |
+| `/resume` | Pick a session to resume |
+| `/clear` | Clear current session context |
+| `/stop` | Interrupt running execution |
+| `/health` | Detailed diagnostics (admin) |
+| `/logs` | Recent events (admin) |
+| `/help` | Show help |
+
+## Webhook Setup
+
+```bash
+# Set webhook once
+curl "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook?url=https://your-public-url/webhook"
+
+# Verify
+curl "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getWebhookInfo"
+```
+
+## Docker
+
+```bash
+docker compose -f docker/docker-compose.yml up -d
+```
+
+## Development
+
+```bash
+# Fake runtime (no OpenCode needed)
+export FAKE_RUNTIME=true
+opencode-telegram
+
+# Run tests
+pytest
+```
+
+## Documentation
+
+See `docs/` for detailed guides:
+- `architecture.md` — Architecture and component design
+- `configuration.md` — Full configuration reference
+- `deployment.md` — Deployment scenarios
+- `security.md` — Security model
+- `migration-notes.md` — Differences from Claude Code bridge

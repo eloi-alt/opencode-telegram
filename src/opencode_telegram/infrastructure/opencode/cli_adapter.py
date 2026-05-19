@@ -52,8 +52,6 @@ class OpenCodeCliAdapter(OpenCodeRuntime):
             "--format", "json",
             "--dir", str(Path.home()),
         ]
-        if session_name and not continue_session:
-            cmd.extend(["--title", session_name])
         if continue_session:
             cmd.append("--continue")
         return cmd

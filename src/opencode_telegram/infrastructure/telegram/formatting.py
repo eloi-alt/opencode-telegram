@@ -79,7 +79,7 @@ def render_status_card(
         lines.append(f"\n⚠️ <b>Error:</b> {escape_html(error)}")
     if runtime_session_id:
         lines.append(f"\n💻 <b>Continue on Mac:</b>")
-        lines.append(f"<code>opencode run --session {runtime_session_id}</code>")
+        lines.append(f"<code>opencode run \"continue\" --continue --dir ~</code>")
     return "\n".join(lines)
 
 

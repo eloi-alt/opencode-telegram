@@ -37,6 +37,7 @@ class SessionSyncService:
 
     async def start(self) -> None:
         self._running = True
+        await self._init_last_seen()
         log.info("sync_service_started", interval=self._interval)
         while self._running:
             try:
@@ -50,6 +51,17 @@ class SessionSyncService:
     async def stop(self) -> None:
         self._running = False
         log.info("sync_service_stopped")
+
+    async def _init_last_seen(self) -> None:
+        bindings = await self._binding_repo.list_all_active()
+        for binding in bindings:
+            session = await self._session_repo.get(binding.session_id)
+            if not session or not session.runtime_session_id:
+                continue
+            history = await self._runtime.get_session_history(session.runtime_session_id)
+            if history:
+                max_ts = max(e.timestamp for e in history)
+                self._last_seen[session.runtime_session_id] = max_ts
 
     async def _sync_active_sessions(self) -> None:
         bindings = await self._binding_repo.list_all_active()

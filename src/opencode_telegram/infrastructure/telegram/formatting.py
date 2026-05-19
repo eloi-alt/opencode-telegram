@@ -49,6 +49,7 @@ def render_status_card(
     workspace: str | None,
     uptime: str | None,
     error: str | None,
+    runtime_session_id: str | None = None,
 ) -> str:
     lines = ["<b>System Status</b>\n"]
     if session:
@@ -76,6 +77,9 @@ def render_status_card(
         lines.append(f"Last activity: {uptime}")
     if error:
         lines.append(f"\n⚠️ <b>Error:</b> {escape_html(error)}")
+    if runtime_session_id:
+        lines.append(f"\n💻 <b>Continue on Mac:</b>")
+        lines.append(f"<code>opencode run --session {runtime_session_id}</code>")
     return "\n".join(lines)
 
 

@@ -185,6 +185,7 @@ class HandleCommandUseCase:
             workspace=session.workspace,
             uptime="just now",
             error=None,
+            runtime_session_id=session.runtime_session_id,
         )
         lines = [
             "👋 <b>OpenCode Telegram Bridge</b>\n",
@@ -216,12 +217,14 @@ class HandleCommandUseCase:
             if session.error_message:
                 error = session.error_message
 
+        rid = session.runtime_session_id if session else None
         card = render_status_card(
             session=session,
             server=session.server if session else self._default_server,
             workspace=session.workspace if session else self._default_workspace,
             uptime=uptime,
             error=error,
+            runtime_session_id=rid,
         )
         await self._telegram.send_message(chat_id.value, card, parse_mode="HTML")
 

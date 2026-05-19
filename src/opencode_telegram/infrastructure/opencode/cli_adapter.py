@@ -44,14 +44,13 @@ class OpenCodeCliAdapter(OpenCodeRuntime):
         return path
 
     def _build_cmd(self, prompt: str, workspace: str | None, continue_session: bool = False, session_name: str | None = None) -> list[str]:
-        ws_dir = self._workspace_dir(workspace)
         cmd = [
             self._cli_path,
             "run",
             prompt,
             "--dangerously-skip-permissions",
             "--format", "json",
-            "--dir", str(ws_dir),
+            "--dir", str(Path.home()),
         ]
         if session_name and not continue_session:
             cmd.extend(["--title", session_name])

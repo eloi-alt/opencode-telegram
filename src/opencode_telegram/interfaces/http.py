@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, Response
@@ -24,6 +25,7 @@ def create_app(config: AppConfig | None = None, container: Container | None = No
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> None:
+        sync_service: asyncio.Task | None = None
         if own_container:
             await container.init()
             bot_commands = [
@@ -40,7 +42,18 @@ def create_app(config: AppConfig | None = None, container: Container | None = No
                 {"command": "help", "description": "Show this help"},
             ]
             await container.telegram.set_commands(bot_commands)
+            from opencode_telegram.app.services.session_sync import SessionSyncService
+            svc = SessionSyncService(
+                binding_repo=container.binding_repo,
+                session_repo=container.session_repo,
+                runtime=container.runtime,
+                telegram=container.telegram,
+                interval=15.0,
+            )
+            sync_service = asyncio.ensure_future(svc.start())
         yield
+        if sync_service:
+            sync_service.cancel()
         if own_container:
             await container.shutdown()
 

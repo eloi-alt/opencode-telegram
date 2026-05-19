@@ -63,7 +63,8 @@ def render_status_card(
             SessionStatus.starting: "🚀",
             SessionStatus.archived: "📦",
         }.get(session.status, "❓")
-        lines.append(f"Session: {status_emoji} <b>{session.status.value}</b>")
+        label = f"<b>{session.name}</b>" if session.name else f"<code>{session.id.value[:12]}...</code>"
+        lines.append(f"Session: {status_emoji} {label} ({session.status.value})")
         lines.append(f"Session ID: <code>{session.id.value[:12]}...</code>")
     else:
         lines.append("Session: ⚪ <b>none</b>")
@@ -84,6 +85,7 @@ def render_help_text(has_admin: bool) -> str:
         "Send any message to chat with OpenCode.",
         "Commands:",
         "  /status — show session status",
+        "  /new <name> — create a new session with an optional name",
         "  /sessions — list active sessions",
         "  /resume — pick a session to resume",
         "  /clear — clear current session context",

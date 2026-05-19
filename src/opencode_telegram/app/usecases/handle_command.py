@@ -40,6 +40,8 @@ log = get_logger("opencode_telegram.app.usecases.handle_command")
 
 
 class HandleCommandUseCase:
+    _pending_new_names: dict[int, bool] = {}
+
     def __init__(
         self,
         user_repo: UserRepository,
@@ -67,6 +69,28 @@ class HandleCommandUseCase:
         self._default_workspace = default_workspace
         self._default_server = default_server
         self._capabilities = capabilities
+
+    def has_pending_name(self, chat_id: ChatId) -> bool:
+        return self._pending_new_names.get(chat_id.value, False)
+
+    async def handle_name_response(self, chat_id: ChatId, user_id: UserId, name: str) -> None:
+        if not self._pending_new_names.pop(chat_id.value, False):
+            return
+        binding = await self._binding_repo.get_active(chat_id)
+        if binding:
+            await self._binding_repo.deactivate(chat_id, binding.session_id)
+            await self._session_repo.update_status(binding.session_id, SessionStatus.archived)
+        session = await self._runtime.create_session(workspace=self._default_workspace)
+        session.name = name
+        session.server = self._default_server
+        await self._session_repo.save(session)
+        binding = SessionBinding(chat_id=chat_id, session_id=session.id, is_active=True)
+        await self._binding_repo.save(binding)
+        await self._telegram.send_message(
+            chat_id.value,
+            f"🆕 New session <b>{name}</b> created and bound.",
+            parse_mode="HTML",
+        )
 
     async def execute(self, update: dict) -> None:
         message = update.get("message", {})
@@ -101,6 +125,7 @@ class HandleCommandUseCase:
             CommandName.status: self._handle_status,
             CommandName.sessions: self._handle_sessions,
             CommandName.resume: self._handle_resume,
+            CommandName.new: self._handle_new,
             CommandName.clear: self._handle_clear,
             CommandName.stop: self._handle_stop,
             CommandName.bind: self._handle_bind,
@@ -204,7 +229,8 @@ class HandleCommandUseCase:
         lines = ["<b>Active Sessions</b>\n"]
         for s in sessions:
             status_emoji = "✅" if s.status == SessionStatus.ready else "⚡" if s.status == SessionStatus.busy else "❌"
-            lines.append(f"{status_emoji} <code>{s.id.value[:12]}...</code> {s.status.value} | ws:{s.workspace or '-'}")
+            label = f"<b>{s.name}</b>" if s.name else f"<code>{s.id.value[:12]}...</code>"
+            lines.append(f"{status_emoji} {label} {s.status.value} | ws:{s.workspace or '-'}")
         await self._telegram.send_message(chat_id.value, "\n".join(lines), parse_mode="HTML")
 
     async def _handle_resume(self, chat_id: ChatId, user_id: UserId, args: list[str]) -> None:
@@ -216,13 +242,39 @@ class HandleCommandUseCase:
             return
         kb = []
         for s in sessions:
-            label = f"{s.id.value[:12]}... ({s.workspace or '-'})"
+            name_part = s.name or s.id.value[:12]
+            label = f"{name_part} ({s.workspace or '-'})"
             kb.append([{"text": label, "callback_data": f"resume:{s.id.value}"}])
         await self._telegram.send_message(
             chat_id.value,
             "Select a session to resume:",
             reply_markup={"inline_keyboard": kb},
         )
+
+    async def _handle_new(self, chat_id: ChatId, user_id: UserId, args: list[str]) -> None:
+        if args:
+            name = args[0]
+            binding = await self._binding_repo.get_active(chat_id)
+            if binding:
+                await self._binding_repo.deactivate(chat_id, binding.session_id)
+                await self._session_repo.update_status(binding.session_id, SessionStatus.archived)
+            session = await self._runtime.create_session(workspace=self._default_workspace)
+            session.name = name
+            session.server = self._default_server
+            await self._session_repo.save(session)
+            binding = SessionBinding(chat_id=chat_id, session_id=session.id, is_active=True)
+            await self._binding_repo.save(binding)
+            await self._telegram.send_message(
+                chat_id.value,
+                f"🆕 New session <b>{name}</b> created and bound.",
+                parse_mode="HTML",
+            )
+        else:
+            self._pending_new_names[chat_id.value] = True
+            await self._telegram.send_message(
+                chat_id.value,
+                "What name for the new session?",
+            )
 
     async def _handle_clear(self, chat_id: ChatId, user_id: UserId, args: list[str]) -> None:
         binding = await self._binding_repo.get_active(chat_id)

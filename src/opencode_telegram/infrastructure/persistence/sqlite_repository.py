@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS chats (
 CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
     status TEXT NOT NULL DEFAULT 'pending',
+    name TEXT,
     workspace TEXT,
     project TEXT,
     server TEXT,
@@ -129,11 +130,12 @@ class SqliteSessionRepository(SessionRepository):
     async def save(self, session: Session) -> None:
         await self._db.execute(
             """INSERT OR REPLACE INTO sessions
-               (id, status, workspace, project, server, runtime_session_id, error_message, created_at, updated_at, last_activity)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               (id, status, name, workspace, project, server, runtime_session_id, error_message, created_at, updated_at, last_activity)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 str(session.id),
                 session.status.value,
+                session.name,
                 session.workspace,
                 session.project,
                 session.server,
@@ -206,14 +208,15 @@ class SqliteSessionRepository(SessionRepository):
         return Session(
             id=SessionId(str(row[0])),
             status=SessionStatus(row[1]),
-            workspace=row[2],
-            project=row[3],
-            server=row[4],
-            runtime_session_id=row[5],
-            error_message=row[6],
-            created_at=datetime.fromisoformat(row[7]),
-            updated_at=datetime.fromisoformat(row[8]),
-            last_activity=datetime.fromisoformat(row[9]),
+            name=row[2],
+            workspace=row[3],
+            project=row[4],
+            server=row[5],
+            runtime_session_id=row[6],
+            error_message=row[7],
+            created_at=datetime.fromisoformat(row[8]),
+            updated_at=datetime.fromisoformat(row[9]),
+            last_activity=datetime.fromisoformat(row[10]),
         )
 
 

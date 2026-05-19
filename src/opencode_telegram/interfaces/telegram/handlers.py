@@ -45,8 +45,14 @@ class TelegramUpdateHandler:
 
     async def _handle_message(self, update: dict) -> None:
         text = update.get("message", {}).get("text", "")
+        chat_id = ChatId(update.get("message", {}).get("chat", {}).get("id", 0))
         if text.startswith("/"):
             await self._command_handler.execute(update)
+        elif self._command_handler.has_pending_name(chat_id):
+            user_data = update.get("message", {}).get("from", {})
+            user_id = user_data.get("id", 0)
+            from opencode_telegram.domain.value_objects import UserId as Uid
+            await self._command_handler.handle_name_response(chat_id, Uid(user_id), text.strip())
         else:
             await self._message_handler.execute(update)
 
@@ -68,16 +74,18 @@ class TelegramUpdateHandler:
 
             await self._binding_repo.set_active(chat_id, session_id)
             await self._session_repo.update_status(session_id, SessionStatus.ready)
+            label = session.name or session_id.value[:12]
             await self._telegram.edit_message(
                 chat_id.value,
                 msg_id,
-                f"Resumed: <code>{session_id.value[:12]}...</code>",
+                f"Resumed: <b>{label}</b>",
                 parse_mode="HTML",
             )
 
+            session_label = f"<b>{session.name}</b>" if session.name else f"<code>{session_id.value[:12]}...</code>"
             lines = [
                 "<b>Session Resumed</b>\n",
-                f"Session: <code>{session_id.value[:12]}...</code>",
+                f"Session: {session_label}",
                 f"Workspace: <b>{session.workspace or '-'}</b>",
                 f"Server: <b>{session.server or '-'}</b>",
                 "\nSend a message to continue.",

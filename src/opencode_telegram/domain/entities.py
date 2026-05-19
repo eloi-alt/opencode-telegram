@@ -37,6 +37,7 @@ class Chat:
 class Session:
     id: SessionId
     status: SessionStatus = SessionStatus.pending
+    name: str | None = None
     workspace: str | None = None
     project: str | None = None
     server: str | None = None

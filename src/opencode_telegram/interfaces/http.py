@@ -29,6 +29,7 @@ def create_app(config: AppConfig | None = None, container: Container | None = No
             bot_commands = [
                 {"command": "start", "description": "Start and show system status"},
                 {"command": "status", "description": "Show session status"},
+                {"command": "new", "description": "Create a new session (e.g. /new my-project)"},
                 {"command": "sessions", "description": "List active sessions"},
                 {"command": "resume", "description": "Pick session to resume"},
                 {"command": "clear", "description": "Clear current session"},

@@ -23,6 +23,11 @@ class Database:
             await self._conn.execute("PRAGMA journal_mode=WAL")
             await self._conn.execute("PRAGMA foreign_keys=ON")
             await self._conn.executescript(SCHEMA)
+            try:
+                await self._conn.execute("ALTER TABLE sessions ADD COLUMN name TEXT")
+                await self._conn.commit()
+            except Exception:
+                pass
             log.info("database_connected", path=path)
         return self._conn
 

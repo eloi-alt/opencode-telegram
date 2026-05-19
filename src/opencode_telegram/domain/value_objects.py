@@ -51,6 +51,7 @@ class CommandName(str, enum.Enum):
     health = "health"
     logs = "logs"
     help = "help"
+    new = "new"
 
 
 @dataclass

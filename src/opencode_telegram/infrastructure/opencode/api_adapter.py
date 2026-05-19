@@ -127,7 +127,7 @@ class OpenCodeApiAdapter(OpenCodeRuntime):
         except httpx.HTTPError as e:
             raise RuntimeUnavailableError(f"API list_sessions failed: {e}") from e
 
-    async def send_prompt(self, session_id: str | SessionId, prompt: str) -> AsyncIterator[str]:
+    async def send_prompt(self, session_id: str | SessionId, prompt: str, session_name: str | None = None) -> AsyncIterator[str]:
         sid = str(session_id)
         try:
             async with self._client.stream(

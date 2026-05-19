@@ -61,7 +61,7 @@ class FakeOpenCodeAdapter(OpenCodeRuntime):
     async def list_sessions(self, limit: int = 10) -> list[Session]:
         return list(self._sessions.values())[:limit]
 
-    async def send_prompt(self, session_id: str | SessionId, prompt: str) -> AsyncIterator[str]:
+    async def send_prompt(self, session_id: str | SessionId, prompt: str, session_name: str | None = None) -> AsyncIterator[str]:
         words = prompt.split()
         for w in words:
             yield w + " "

@@ -28,7 +28,7 @@ class OpenCodeRuntime(ABC):
 
     @abstractmethod
     async def send_prompt(
-        self, session_id: str | SessionId, prompt: str
+        self, session_id: str | SessionId, prompt: str, session_name: str | None = None
     ) -> AsyncIterator[str]:
         ...
 

@@ -113,7 +113,7 @@ class HandleMessageUseCase:
 
         try:
             response_parts: list[str] = []
-            async for chunk in self._runtime.send_prompt(session.id, text):
+            async for chunk in self._runtime.send_prompt(session.id, text, session_name=session.name):
                 response_parts.append(chunk)
 
             full_response = "".join(response_parts).strip()

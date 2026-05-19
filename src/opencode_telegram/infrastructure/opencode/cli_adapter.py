@@ -40,7 +40,7 @@ class OpenCodeCliAdapter(OpenCodeRuntime):
         path.mkdir(parents=True, exist_ok=True)
         return path
 
-    def _build_cmd(self, prompt: str, workspace: str | None, continue_session: bool = False) -> list[str]:
+    def _build_cmd(self, prompt: str, workspace: str | None, continue_session: bool = False, session_name: str | None = None) -> list[str]:
         ws_dir = self._workspace_dir(workspace)
         cmd = [
             self._cli_path,
@@ -50,13 +50,15 @@ class OpenCodeCliAdapter(OpenCodeRuntime):
             "--format", "json",
             "--dir", str(ws_dir),
         ]
+        if session_name and not continue_session:
+            cmd.extend(["--title", session_name])
         if continue_session:
             cmd.append("--continue")
         return cmd
 
-    async def _run_opencode(self, prompt: str, workspace: str | None, continue_session: bool = False) -> str:
-        cmd = self._build_cmd(prompt, workspace, continue_session)
-        log.info("cli_running_cmd", prompt_len=len(prompt), workspace=workspace, continue_session=continue_session)
+    async def _run_opencode(self, prompt: str, workspace: str | None, continue_session: bool = False, session_name: str | None = None) -> str:
+        cmd = self._build_cmd(prompt, workspace, continue_session, session_name)
+        log.info("cli_running_cmd", prompt_len=len(prompt), workspace=workspace, continue_session=continue_session, session_name=session_name)
         try:
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
@@ -182,12 +184,13 @@ class OpenCodeCliAdapter(OpenCodeRuntime):
             )]
         return []
 
-    async def send_prompt(self, session_id: str | SessionId, prompt: str) -> AsyncIterator[str]:
+    async def send_prompt(self, session_id: str | SessionId, prompt: str, session_name: str | None = None) -> AsyncIterator[str]:
         try:
             response = await self._run_opencode(
                 prompt=prompt,
                 workspace=self._default_workspace,
                 continue_session=self._has_sent,
+                session_name=session_name,
             )
             yield response
         except RuntimeUnavailableError:

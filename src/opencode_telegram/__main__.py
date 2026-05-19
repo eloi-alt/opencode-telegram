@@ -43,7 +43,6 @@ def _run_webhook(config: AppConfig) -> None:
 
 def _run_polling(config: AppConfig) -> None:
     from opencode_telegram.app.di import Container
-    from opencode_telegram.app.services.session_sync import SessionSyncService
     from opencode_telegram.infrastructure.telegram.poller import TelegramPoller
     from opencode_telegram.interfaces.http import create_app
     from opencode_telegram.interfaces.telegram.handlers import TelegramUpdateHandler
@@ -98,15 +97,6 @@ def _run_polling(config: AppConfig) -> None:
             except NotImplementedError:
                 pass
 
-        sync_service = SessionSyncService(
-            binding_repo=container.binding_repo,
-            session_repo=container.session_repo,
-            runtime=container.runtime,
-            telegram=container.telegram,
-            interval=15.0,
-        )
-        sync_task = asyncio.create_task(sync_service.start())
-
         log.info("polling_mode_enabled")
         poll_task = asyncio.create_task(poller.start())
 
@@ -120,7 +110,7 @@ def _run_polling(config: AppConfig) -> None:
         http_task = asyncio.create_task(http_server.serve())
 
         done, pending = await asyncio.wait(
-            [poll_task, http_task, sync_task],
+            [poll_task, http_task],
             return_when=asyncio.FIRST_COMPLETED,
         )
 
@@ -128,7 +118,6 @@ def _run_polling(config: AppConfig) -> None:
             task.cancel()
 
         await poller.stop()
-        await sync_service.stop()
         await container.shutdown()
         log.info("shutdown_complete")
 

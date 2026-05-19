@@ -133,10 +133,6 @@ class SessionBindingRepository(ABC):
         ...
 
     @abstractmethod
-    async def list_all_active(self) -> list[SessionBinding]:
-        ...
-
-    @abstractmethod
     async def deactivate(self, chat_id: ChatId, session_id: SessionId) -> None:
         ...
 

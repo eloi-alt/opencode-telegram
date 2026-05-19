@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import time
 from collections.abc import AsyncIterator
 from datetime import datetime
 
-from opencode_telegram.app.services.session_sync import SessionSyncService
 from opencode_telegram.domain.entities import (
     AuditEvent,
     Chat,
@@ -123,11 +121,9 @@ class HandleMessageUseCase:
                 full_response = "[No response]"
 
             rid = self._runtime.get_runtime_session_id()
-            if rid:
-                if session.runtime_session_id != rid:
-                    session.runtime_session_id = rid
-                    await self._session_repo.save(session)
-                SessionSyncService.mark_synced(rid, time.time())
+            if rid and session.runtime_session_id != rid:
+                session.runtime_session_id = rid
+                await self._session_repo.save(session)
 
             await self._message_repo.update_status(msg.id, MessageStatus.response_complete)
             await self._session_repo.update_status(session.id, SessionStatus.ready)

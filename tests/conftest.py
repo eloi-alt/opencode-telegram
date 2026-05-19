@@ -120,9 +120,6 @@ class FakeSessionBindingRepository(SessionBindingRepository):
                 return b
         return None
 
-    async def list_all_active(self) -> list[SessionBinding]:
-        return [b for b in self._store.values() if b.is_active]
-
     async def deactivate(self, chat_id: ChatId, session_id: SessionId) -> None:
         key = (chat_id.value, str(session_id))
         if key in self._store:

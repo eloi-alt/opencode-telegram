@@ -315,15 +315,6 @@ class SqliteSessionBindingRepository(SessionBindingRepository):
             created_at=datetime.fromisoformat(row[3]),
         )
 
-    async def list_all_active(self) -> list[SessionBinding]:
-        cursor = await self._db.execute(
-            "SELECT * FROM session_bindings WHERE is_active = 1 ORDER BY created_at DESC"
-        )
-        return [
-            SessionBinding(chat_id=ChatId(r[0]), session_id=SessionId(r[1]), is_active=bool(r[2]), created_at=datetime.fromisoformat(r[3]))
-            for r in await cursor.fetchall()
-        ]
-
     async def deactivate(self, chat_id: ChatId, session_id: SessionId) -> None:
         await self._db.execute(
             "UPDATE session_bindings SET is_active = 0 WHERE chat_id = ? AND session_id = ?",

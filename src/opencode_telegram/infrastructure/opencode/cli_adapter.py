@@ -54,6 +54,8 @@ class OpenCodeCliAdapter(OpenCodeRuntime):
         ]
         if continue_session:
             cmd.append("--continue")
+        elif session_name:
+            cmd.extend(["--title", session_name])
         return cmd
 
     async def _run_opencode(self, prompt: str, workspace: str | None, continue_session: bool = False, session_name: str | None = None) -> str:
